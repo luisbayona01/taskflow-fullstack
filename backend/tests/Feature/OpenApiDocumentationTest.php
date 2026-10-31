@@ -106,13 +106,38 @@ class OpenApiDocumentationTest extends TestCase
         }
     }
 
-    public function test_the_swagger_ui_is_served_from_the_root_path(): void
+    public function test_the_swagger_ui_is_served_and_the_spec_is_valid_json(): void
     {
-        $this->get('/')->assertStatus(200);
+        $this->get('/documentation')
+            ->assertStatus(200)
+            ->assertHeader('Content-Type', 'text/html; charset=UTF-8');
 
         $this->get('/docs')
             ->assertStatus(200)
             ->assertHeader('Content-Type', 'application/json');
+    }
+
+    public function test_the_main_path_publishes_the_catalogue_of_routes(): void
+    {
+        $response = $this->get('/', ['Accept' => 'application/json']);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('name', config('app.name'))
+            ->assertJsonPath('total_routes', 22)
+            ->assertJsonStructure([
+                'name',
+                'version',
+                'documentation' => ['swagger_ui', 'openapi_json', 'openapi_file', 'health'],
+                'routes' => [
+                    ['method', 'uri', 'name', 'action', 'middleware', 'summary', 'tags'],
+                ],
+            ]);
+
+        $uris = array_column($response->json('routes'), 'uri');
+
+        $this->assertContains('/api/projects/{project}/stats', $uris);
+        $this->assertContains('/api/projects/{project}/tasks/{task}/comments', $uris);
+        $this->assertNotContains('/api', $uris);
     }
 
     /**

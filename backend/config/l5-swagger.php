@@ -11,9 +11,10 @@ return [
             'routes' => [
                 /*
                  * Route for accessing api documentation interface.
-                 * The Swagger UI is served from the root path ("/").
+                 * The Swagger UI is served from "/documentation" and the main
+                 * path ("/") publishes the catalogue of the API routes.
                  */
-                'api' => '/',
+                'api' => 'documentation',
             ],
             'paths' => [
                 /*

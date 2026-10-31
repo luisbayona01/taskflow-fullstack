@@ -88,14 +88,73 @@ php artisan test
 ```
 El archivo generado se encuentra en **`backend/documentacion/api-docs.json`** y está versionado en el repositorio, por lo que cualquier cambio en la API debe acompañado de una regeneración (`php artisan l5-swagger:generate`) antes del commit.
 
-### URL de Swagger UI
+### URL de Swagger UI y rutas de la documentación
 | Recurso | URL |
 |---|---|
-| **Swagger UI (interfaz interactiva)** | **http://localhost:8000/** (ruta raíz) |
+| **Índice de rutas de la API (ruta principal)** | **http://localhost:8000/** (HTML) o `http://localhost:8000/api` (JSON) |
+| **Swagger UI (interfaz interactiva)** | **http://localhost:8000/documentation** (alias: `/swagger`) |
 | Documento OpenAPI (JSON) | http://localhost:8000/docs |
 | Assets de Swagger UI | http://localhost:8000/docs/asset/{asset} |
+| Health check | http://localhost:8000/up |
 
-> La interfaz se sirve desde la **ruta raíz** (`/`) mediante la configuración `'api' => '/'` de `backend/config/l5-swagger.php`. El JSON plano se publica en `/docs`.
+> La **ruta raíz** (`/`) publica el catálogo completo de rutas del backend (método, URI, descripción, tags y si requiere autenticación Bearer) y enlaza con la documentación. Swagger UI se sirve desde `/documentation` y el JSON plano desde `/docs`.
+
+El catálogo también está disponible en formato JSON (útil para scripts y clientes):
+```bash
+curl -H "Accept: application/json" http://localhost:8000/
+```
+Respuesta:
+```json
+{
+  "name": "TaskFlow",
+  "version": "1.0.0",
+  "documentation": {
+    "swagger_ui": "http://localhost:8000/documentation",
+    "openapi_json": "http://localhost:8000/docs",
+    "openapi_file": "backend/documentacion/api-docs.json",
+    "health": "http://localhost:8000/up"
+  },
+  "total_routes": 22,
+  "routes": [
+    {
+      "method": "GET",
+      "uri": "/api/projects",
+      "name": "projects.index",
+      "action": "App\\Http\\Controllers\\Api\\ProjectController@index",
+      "middleware": ["api", "auth:sanctum"],
+      "summary": "List the projects of the authenticated user",
+      "tags": ["Projects"]
+    }
+  ]
+}
+```
+
+### Catálogo de rutas de la API
+
+| Método | URI | Descripción | Auth |
+|---|---|---|---|
+| POST | `/api/register` | Registrar un usuario | Pública |
+| POST | `/api/login` | Autenticarse y obtener token Sanctum | Pública |
+| POST | `/api/logout` | Revocar el token actual | Bearer |
+| GET | `/api/me` | Perfil del usuario autenticado | Bearer |
+| GET | `/api/projects` | Listar proyectos del usuario | Bearer |
+| POST | `/api/projects` | Crear proyecto | Bearer |
+| GET | `/api/projects/{project}` | Detalle del proyecto | Bearer |
+| PUT / PATCH | `/api/projects/{project}` | Actualizar proyecto (owner) | Bearer |
+| DELETE | `/api/projects/{project}` | Eliminar proyecto (owner) | Bearer |
+| GET | `/api/projects/{project}/members` | Listar miembros del proyecto | Bearer |
+| POST | `/api/projects/{project}/members` | Agregar miembro al proyecto | Bearer |
+| DELETE | `/api/projects/{project}/members/{user}` | Quitar miembro del proyecto | Bearer |
+| GET | `/api/projects/{project}/stats` | Estadísticas del proyecto | Bearer |
+| GET | `/api/projects/{project}/tasks` | Listar, filtrar, ordenar y paginar tareas | Bearer |
+| POST | `/api/projects/{project}/tasks` | Crear tarea | Bearer |
+| GET | `/api/projects/{project}/tasks/{task}` | Detalle de una tarea | Bearer |
+| PUT / PATCH | `/api/projects/{project}/tasks/{task}` | Actualizar tarea | Bearer |
+| DELETE | `/api/projects/{project}/tasks/{task}` | Eliminar tarea | Bearer |
+| GET | `/api/projects/{project}/tasks/{task}/comments` | Listar comentarios (más recientes primero) | Bearer |
+| POST | `/api/projects/{project}/tasks/{task}/comments` | Publicar comentario | Bearer |
+
+> **22 operaciones REST** en total (las combinaciones `PUT|PATCH` comparten la misma acción). El listado se mantiene sincronizado automáticamente con `php artisan route:list`.
 
 ### Autenticación con Sanctum
 1. Obtener un token con `POST /api/login` (o `POST /api/register`).
@@ -107,7 +166,7 @@ No se incluyen tokens ni credenciales reales en la documentación.
 
 ### Cómo probar los endpoints
 1. Arrancar el backend: `cd backend && php artisan serve`.
-2. Abrir http://localhost:8000/ en el navegador.
+2. Abrir http://localhost:8000/ para ver el índice de rutas (o http://localhost:8000/documentation para Swagger UI).
 3. Autorizar el token (ver sección anterior).
 4. Expandir el grupo de tags (Authentication, Projects, Tasks, Comments) y pulsar **Try it out** → **Execute**.
 

@@ -46,8 +46,31 @@ usan el esquema Bearer y que no existen referencias rotas.
 - **Tecnología**: `darkaonline/l5-swagger` 11.2.2 + `zircote/swagger-php` 7.0.0 (OpenAPI 3.0).
 - **Definición**: atributos `OpenApi\Attributes` sobre los controladores y esquemas
   centralizados en `app/OpenApi/ApiSchemas.php`.
-- **Swagger UI**: http://localhost:8000/ (ruta raíz, configurada en `config/l5-swagger.php`).
+- **Índice de rutas (ruta principal)**: http://localhost:8000/ (HTML) y http://localhost:8000/api (JSON).
+- **Swagger UI**: http://localhost:8000/documentation (alias `/swagger`).
 - **Documento OpenAPI**: http://localhost:8000/docs y archivo versionado `documentacion/api-docs.json`.
+
+### Rutas del backend
+
+| Método | URI | Descripción | Auth |
+|---|---|---|---|
+| GET | `/` | Índice de rutas de la API (HTML) | Pública |
+| GET | `/api` | Índice de rutas de la API (JSON) | Pública |
+| GET | `/documentation` | Swagger UI | Pública |
+| GET | `/docs` | Documento OpenAPI (JSON) | Pública |
+| GET | `/up` | Health check | Pública |
+| POST | `/api/register` | Registrar usuario | Pública |
+| POST | `/api/login` | Login y token Sanctum | Pública |
+| POST | `/api/logout` | Revocar token | Bearer |
+| GET | `/api/me` | Perfil del usuario | Bearer |
+| GET / POST | `/api/projects` | Listar / crear proyectos | Bearer |
+| GET / PUT / PATCH / DELETE | `/api/projects/{project}` | Detalle / actualizar / eliminar proyecto | Bearer |
+| GET / POST | `/api/projects/{project}/members` | Listar / agregar miembros | Bearer |
+| DELETE | `/api/projects/{project}/members/{user}` | Quitar miembro | Bearer |
+| GET | `/api/projects/{project}/stats` | Estadísticas del proyecto | Bearer |
+| GET / POST | `/api/projects/{project}/tasks` | Listar (con filtros) / crear tareas | Bearer |
+| GET / PUT / PATCH / DELETE | `/api/projects/{project}/tasks/{task}` | Detalle / actualizar / eliminar tarea | Bearer |
+| GET / POST | `/api/projects/{project}/tasks/{task}/comments` | Listar / crear comentarios | Bearer |
 
 ### Comandos
 
