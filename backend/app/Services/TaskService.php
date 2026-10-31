@@ -5,9 +5,12 @@ namespace App\Services;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
+use App\Notifications\TaskAssignedNotification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Notification;
 
 class TaskService
 {
@@ -16,7 +19,7 @@ class TaskService
      */
     public function createTask(Project $project, User $user, array $data): Task
     {
-        return DB::transaction(function () use ($project, $data): Task {
+        return DB::transaction(function () use ($project, $data, $user): Task {
             $task = new Task($data);
             $task->project()->associate($project);
 
@@ -26,6 +29,13 @@ class TaskService
             }
 
             $task->save();
+
+            // Rule: Notify if assigned_to is present
+            if ($task->assigned_to) {
+                $assignee = User::find($task->assigned_to);
+                // afterCommit ensures notification is sent only if transaction succeeds
+                Notification::send($assignee, new TaskAssignedNotification($task, $user))->afterCommit();
+            }
 
             return $task;
         });
@@ -37,6 +47,9 @@ class TaskService
     public function updateTask(Task $task, array $data): Task
     {
         return DB::transaction(function () use ($task, $data): Task {
+            $oldAssigneeId = $task->assigned_to;
+            $currentUser = Auth::user();
+
             $task->fill($data);
 
             if (array_key_exists('assigned_to', $data)) {
@@ -46,6 +59,12 @@ class TaskService
             }
 
             $task->save();
+
+            // Rule: Notify only if assigned_to changed and is not null
+            if ($task->assigned_to !== $oldAssigneeId && $task->assigned_to !== null) {
+                $newAssignee = User::find($task->assigned_to);
+                Notification::send($newAssignee, new TaskAssignedNotification($task, $currentUser))->afterCommit();
+            }
 
             return $task->refresh();
         });
