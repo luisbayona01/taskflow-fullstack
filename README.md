@@ -30,7 +30,7 @@ Proyecto de prueba técnica para la gestión de tareas y proyectos.
 - `VITE_API_BASE_URL`: URL base del servidor Laravel (ej. `http://localhost:8000/api`).
 
 ## 🧪 Ejecución de Pruebas
-- **Backend**: Ejecutar `php artisan test` para correr las pruebas unitarias y de integración.
+- **Backend**: Ejecutar `php artisan test` para correr las pruebas unitarias y de integración (124 pruebas). La [matriz de pruebas de la API](#-matriz-de-pruebas-de-la-api-parte-2) detalla qué se verifica en cada endpoint.
 - **Frontend**: Ejecutar `npm run test:unit` para las pruebas de componentes y lógica.
 
 ## 🛠 Decisiones Técnicas
@@ -155,6 +155,112 @@ Respuesta:
 | POST | `/api/projects/{project}/tasks/{task}/comments` | Publicar comentario | Bearer |
 
 > **22 operaciones REST** en total (las combinaciones `PUT|PATCH` comparten la misma acción). El listado se mantiene sincronizado automáticamente con `php artisan route:list`.
+
+## 🧪 MATRIZ DE PRUEBAS DE LA API (Parte 2)
+
+Esta es la lista de endpoints que la prueba técnica pide verificar y los casos que deben probarse en cada uno. **Todos estos casos están implementados en la suite** (`backend/tests/Feature/`), que se ejecuta con `php artisan test`.
+
+### Autenticación (`tests/Feature/Auth/AuthenticationTest.php`)
+| Endpoint | Casos a probar | Código esperado |
+|---|---|---|
+| `POST /api/register` | Registro válido devuelve token y usuario | `201` |
+| | Validación: name/email/password requeridos, email único, password ≥ 8 y confirmado | `422` |
+| `POST /api/login` | Credenciales válidas devuelven token Sanctum | `200` |
+| | Credenciales inválidas (no revela si el email existe) | `401` |
+| | Rate limiting por IP | `429` |
+| `POST /api/logout` | Revoca únicamente el token actual | `200` |
+| `GET /api/me` | Perfil del usuario autenticado | `200` |
+| | Sin token / token inválido | `401` |
+
+### Proyectos (`tests/Feature/Api/ProjectApiTest.php`, `ProjectMemberApiTest.php`)
+| Endpoint | Casos a probar | Código esperado |
+|---|---|---|
+| `GET /api/projects` | Solo los proyectos del usuario (owner o miembro) | `200` |
+| | Sin autenticar | `401` |
+| `POST /api/projects` | El owner se registra en la pivote con rol `owner` | `201` |
+| | Datos inválidos | `422` |
+| `GET /api/projects/{project}` | Miembro ve el detalle con owner y miembros | `200` |
+| | No miembro (IDOR) | `403` |
+| | Proyecto inexistente | `404` |
+| `PUT/PATCH /api/projects/{project}` | Solo el owner actualiza | `200` |
+| | Miembro no owner | `403` |
+| `DELETE /api/projects/{project}` | Solo el owner elimina (soft delete) | `204` |
+| `GET /api/projects/{project}/members` | Miembro lista miembros | `200` |
+| | No miembro | `403` |
+| `POST /api/projects/{project}/members` | Owner agrega miembro | `201` |
+| | No owner | `403` |
+| | Usuario inexistente o ya miembro | `422` |
+| `DELETE /api/projects/{project}/members/{user}` | Owner quita miembro | `204` |
+| | No owner | `403` |
+| | Usuario no miembro | `404` |
+| | El owner no puede ser removido | `422` |
+
+### Tareas (`tests/Feature/Api/TaskApiTest.php`, `TaskFilteringApiTest.php`)
+| Endpoint | Casos a probar | Código esperado |
+|---|---|---|
+| `GET /api/projects/{project}/tasks` | Listado paginado con filtros `status`, `priority`, `assigned_to`, `due_date_from/to`, búsqueda `search`, `sort_by`, `sort_direction`, `per_page` | `200` |
+| | No miembro | `403` |
+| `POST /api/projects/{project}/tasks` | Cualquier miembro crea tareas | `201` |
+| | `title` requerido, enums y `due_date` válidos | `422` |
+| | Asignar a un usuario que **no** es miembro | `422` |
+| `GET /api/projects/{project}/tasks/{task}` | Miembro consulta el detalle | `200` |
+| | Tarea de otro proyecto / inexistente | `404` |
+| `PUT/PATCH /api/projects/{project}/tasks/{task}` | Miembro actualiza la tarea | `200` |
+| | Asignar a un no miembro | `422` |
+| `DELETE /api/projects/{project}/tasks/{task}` | Miembro elimina la tarea | `204` |
+
+### Comentarios (`tests/Feature/Api/CommentApiTest.php`)
+| Endpoint | Casos a probar | Código esperado |
+|---|---|---|
+| `GET /api/projects/{project}/tasks/{task}/comments` | Listado paginado (15 por página), del más reciente al más antiguo, con autor | `200` |
+| | No miembro | `403` |
+| | Tarea de otro proyecto | `404` |
+| `POST /api/projects/{project}/tasks/{task}/comments` | Miembro publica (autor = usuario autenticado, tarea = URL) | `201` |
+| | `body` obligatorio | `422` |
+| | No miembro | `403` |
+
+### Estadísticas (`tests/Feature/Api/ProjectStatsApiTest.php`)
+| Endpoint | Casos a probar | Código esperado |
+|---|---|---|
+| `GET /api/projects/{project}/stats` | Proyecto sin tareas → todos los contadores en 0 y avance `0` | `200` |
+| | Totales por estado (`pending`, `in_progress`, `done`) | `200` |
+| | Vencidas = `due_date` anterior y estado ≠ `done` | `200` |
+| | Las completadas no cuentan como vencidas | `200` |
+| | Porcentaje redondeado a 2 decimales (1/3 → `33.33`) | `200` |
+| | No miembro | `403` |
+| | Sin autenticar | `401` |
+
+### Notificaciones (`tests/Feature/Api/TaskNotificationTest.php`)
+| Caso | Resultado esperado | Código esperado |
+|---|---|---|
+| Crear tarea con `assigned_to` | Notificación al asignado (`Notification::fake()`) | `201` |
+| Cambiar el `assigned_to` | Notificación **solo** al nuevo asignado | `200` |
+| Mantener el mismo asignado | Sin notificación | `200` |
+| `assigned_to = null` | Sin notificación | `200` |
+| Crear tarea sin asignado | Sin notificación | `201` |
+| Clase de la notificación | Implementa `ShouldQueue` y `ShouldQueueAfterCommit` | — |
+| Contenido del correo | Proyecto, tarea, descripción (si existe), prioridad, fecha límite (si existe) y asignador | — |
+
+### Contrato transversal (`tests/Feature/Api/ApiContractTest.php`)
+| Caso | Resultado esperado |
+|---|---|
+| Los 20 endpoints protegidos sin token | `401` con `{"success": false}` |
+| Proyecto o tarea inexistente | `404` con el mismo envoltorio |
+| Tarea perteneciente a otro proyecto | `404` |
+| Errores de validación (create y update) | `422` con los nombres de los campos |
+| Borrados | `204` sin cuerpo |
+| No miembro en endpoints con alcance de proyecto | `403` |
+| Listado de tareas sin N+1 | El número de queries no crece con el número de tareas |
+| Detalle de proyecto sin N+1 | Queries acotadas (owner y miembros eager loaded) |
+
+### Comandos
+```bash
+cd backend
+php artisan test                                    # suite completa (124 pruebas)
+php artisan test --filter=ApiContractTest           # contrato HTTP
+php artisan test --filter=TaskNotificationTest      # notificaciones
+php artisan test --filter=TaskFilteringApiTest      # filtros y paginación
+```
 
 ### Autenticación con Sanctum
 1. Obtener un token con `POST /api/login` (o `POST /api/register`).

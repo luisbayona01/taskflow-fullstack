@@ -248,7 +248,7 @@ class TaskController extends Controller
             new OA\Parameter(name: "task", in: "path", required: true, schema: new OA\Schema(type: "integer", example: 1)),
         ],
         responses: [
-            new OA\Response(response: 200, description: "Task deleted", content: new OA\JsonContent(ref: "#/components/schemas/MessageResponse")),
+            new OA\Response(response: 204, description: "Task deleted (no content)"),
             new OA\Response(response: 401, description: "Unauthenticated", content: new OA\JsonContent(ref: "#/components/schemas/ErrorResponse")),
             new OA\Response(response: 403, description: "The user is not a member of the project", content: new OA\JsonContent(ref: "#/components/schemas/ErrorResponse")),
             new OA\Response(response: 404, description: "The task does not belong to the project", content: new OA\JsonContent(ref: "#/components/schemas/ErrorResponse")),
@@ -264,6 +264,6 @@ class TaskController extends Controller
 
         $this->taskService->deleteTask($task);
 
-        return ApiResponse::success('Task deleted successfully.');
+        return response()->json(null, JsonResponse::HTTP_NO_CONTENT);
     }
 }

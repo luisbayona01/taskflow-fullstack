@@ -185,7 +185,7 @@ class ProjectController extends Controller
             new OA\Parameter(name: "project", in: "path", required: true, schema: new OA\Schema(type: "integer", example: 1)),
         ],
         responses: [
-            new OA\Response(response: 200, description: "Project deleted", content: new OA\JsonContent(ref: "#/components/schemas/MessageResponse")),
+            new OA\Response(response: 204, description: "Project deleted (no content)"),
             new OA\Response(response: 401, description: "Unauthenticated", content: new OA\JsonContent(ref: "#/components/schemas/ErrorResponse")),
             new OA\Response(response: 403, description: "Only the project owner can delete it", content: new OA\JsonContent(ref: "#/components/schemas/ErrorResponse")),
             new OA\Response(response: 404, description: "Project not found", content: new OA\JsonContent(ref: "#/components/schemas/ErrorResponse")),
@@ -197,6 +197,6 @@ class ProjectController extends Controller
 
         $this->projectService->deleteProject($project);
 
-        return ApiResponse::success('Project deleted successfully.');
+        return response()->json(null, JsonResponse::HTTP_NO_CONTENT);
     }
 }

@@ -105,7 +105,7 @@ class ProjectMemberController extends Controller
             new OA\Parameter(name: "user", in: "path", required: true, schema: new OA\Schema(type: "integer", example: 2)),
         ],
         responses: [
-            new OA\Response(response: 200, description: "Member removed from the project", content: new OA\JsonContent(ref: "#/components/schemas/MessageResponse")),
+            new OA\Response(response: 204, description: "Member removed from the project (no content)"),
             new OA\Response(response: 401, description: "Unauthenticated", content: new OA\JsonContent(ref: "#/components/schemas/ErrorResponse")),
             new OA\Response(response: 403, description: "Only the project owner can manage members", content: new OA\JsonContent(ref: "#/components/schemas/ErrorResponse")),
             new OA\Response(response: 404, description: "The user is not a member of the project", content: new OA\JsonContent(ref: "#/components/schemas/ErrorResponse")),
@@ -126,6 +126,6 @@ class ProjectMemberController extends Controller
 
         $project->members()->detach($user->id);
 
-        return ApiResponse::success('User removed from project successfully.');
+        return response()->json(null, JsonResponse::HTTP_NO_CONTENT);
     }
 }

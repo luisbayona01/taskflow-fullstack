@@ -731,15 +731,8 @@
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "Project deleted",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/MessageResponse"
-                                }
-                            }
-                        }
+                    "204": {
+                        "description": "Project deleted (no content)"
                     },
                     "401": {
                         "description": "Unauthenticated",
@@ -1049,15 +1042,8 @@
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "Member removed from the project",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/MessageResponse"
-                                }
-                            }
-                        }
+                    "204": {
+                        "description": "Member removed from the project (no content)"
                     },
                     "401": {
                         "description": "Unauthenticated",
@@ -1724,15 +1710,8 @@
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "Task deleted",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/MessageResponse"
-                                }
-                            }
-                        }
+                    "204": {
+                        "description": "Task deleted (no content)"
                     },
                     "401": {
                         "description": "Unauthenticated",

@@ -88,8 +88,7 @@ class TaskApiTest extends TestCase
         $response = $this->actingAs($member, 'sanctum')
             ->deleteJson("/api/projects/{$project->id}/tasks/{$task->id}");
 
-        $response->assertOk()
-            ->assertJsonPath('success', true);
+        $response->assertNoContent();
 
         $this->assertDatabaseMissing('tasks', ['id' => $task->id]);
     }

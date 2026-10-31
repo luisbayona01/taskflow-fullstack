@@ -107,8 +107,7 @@ class ProjectMemberApiTest extends TestCase
         $response = $this->actingAs($owner, 'sanctum')
             ->deleteJson("/api/projects/{$project->id}/members/{$member->id}");
 
-        $response->assertOk()
-            ->assertJsonPath('success', true);
+        $response->assertNoContent();
 
         $this->assertDatabaseMissing('project_user', [
             'project_id' => $project->id,

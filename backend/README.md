@@ -36,10 +36,23 @@ La API queda disponible en `http://localhost:8000/api`.
 php artisan test
 ```
 
-La suite incluye la validación automática de la documentación OpenAPI
+La suite (124 pruebas) incluye la validación automática de la documentación OpenAPI
 (`tests/Feature/OpenApiDocumentationTest.php`): comprueba que el JSON es válido,
 que todas las rutas de la API están documentadas, que los endpoints protegidos
 usan el esquema Bearer y que no existen referencias rotas.
+
+| Archivo | Cobertura |
+|---|---|
+| `tests/Feature/Auth/AuthenticationTest.php` | Registro, login, logout, `me`, rate limiting, token inválido. |
+| `tests/Feature/Api/ProjectApiTest.php` | CRUD de proyectos, soft delete, visibilidad por membresía. |
+| `tests/Feature/Api/ProjectMemberApiTest.php` | Alta/baja de miembros, owner vs miembro, casos 403/404/422. |
+| `tests/Feature/Api/TaskApiTest.php` | CRUD de tareas, asignación a miembros, 404 de proyecto ajeno. |
+| `tests/Feature/Api/TaskFilteringApiTest.php` | Filtros, búsqueda, ordenamiento y paginación. |
+| `tests/Feature/Api/CommentApiTest.php` | Crear/listar comentarios, autor, paginación y autorización. |
+| `tests/Feature/Api/ProjectStatsApiTest.php` | Totales por estado, vencidas, porcentaje y 403/401. |
+| `tests/Feature/Api/TaskNotificationTest.php` | Notificación en cola al asignar, con `Notification::fake()`. |
+| `tests/Feature/Api/ApiContractTest.php` | Contrato HTTP: 401/403/404/422/204 y ausencia de N+1. |
+| `tests/Feature/OpenApiDocumentationTest.php` | Sincronización de la documentación con las rutas reales. |
 
 ## API DOCUMENTATION – SWAGGER
 

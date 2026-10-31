@@ -172,9 +172,7 @@ class ProjectApiTest extends TestCase
         $response = $this->actingAs($owner, 'sanctum')
             ->deleteJson("/api/projects/{$project->id}");
 
-        $response->assertOk()
-            ->assertJsonPath('success', true)
-            ->assertJsonPath('message', 'Project deleted successfully.');
+        $response->assertNoContent();
 
         $this->assertSoftDeleted('projects', ['id' => $project->id]);
 
