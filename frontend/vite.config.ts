@@ -7,15 +7,17 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [
-    vue(),
-    vueJsx(),
-    vueDevTools(),
-  ],
+  plugins: [vue(), vueJsx(), vueDevTools()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
+  },
+  optimizeDeps: {
+    // Se pre-empacan las dependencias que se detectan tarde (los iconos se
+    // importan desde cada vista): así el servidor de desarrollo no recarga la
+    // página a mitad de una prueba E2E.
+    include: ['element-plus', '@element-plus/icons-vue'],
   },
   server: {
     port: 5173,

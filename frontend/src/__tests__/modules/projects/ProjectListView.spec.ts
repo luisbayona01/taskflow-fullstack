@@ -6,7 +6,6 @@ import ElementPlus from 'element-plus'
 
 import ProjectListView from '@/modules/projects/ProjectListView.vue'
 import { projectService } from '@/services/project'
-import { taskService } from '@/services/task'
 import { useAuthStore } from '@/stores/auth'
 import { ApiRequestError } from '@/services/api'
 import type { Project, ProjectStats, Task, User } from '@/types/api'
@@ -16,12 +15,13 @@ vi.mock('@/services/project', () => ({
     list: vi.fn<() => Promise<Project[]>>(),
     get: vi.fn<(projectId: number) => Promise<Project>>(),
     create: vi.fn<(payload: { name: string; description?: string | null }) => Promise<Project>>(),
-    update: vi.fn<
-      (
-        projectId: number,
-        payload: { name: string; description?: string | null },
-      ) => Promise<Project>
-    >(),
+    update:
+      vi.fn<
+        (
+          projectId: number,
+          payload: { name: string; description?: string | null },
+        ) => Promise<Project>
+      >(),
     remove: vi.fn<(projectId: number) => Promise<void>>(),
     stats: vi.fn<(projectId: number) => Promise<ProjectStats>>(),
   },

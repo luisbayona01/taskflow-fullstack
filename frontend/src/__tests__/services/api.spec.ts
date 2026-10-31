@@ -210,7 +210,7 @@ describe('services/api', () => {
   })
 
   it('deduplica las peticiones GET idénticas y simultáneas', async () => {
-    const adapter = vi.fn(respondWith({ success: true, message: 'ok', data: [] }))
+    const adapter = vi.fn<AxiosAdapter>(respondWith({ success: true, message: 'ok', data: [] }))
     http.defaults.adapter = adapter
 
     await Promise.all([apiClient.get('/projects'), apiClient.get('/projects')])
@@ -219,7 +219,7 @@ describe('services/api', () => {
   })
 
   it('reutiliza la respuesta cacheada de un GET y la invalida al mutar', async () => {
-    const adapter = vi.fn(respondWith({ success: true, message: 'ok', data: [] }))
+    const adapter = vi.fn<AxiosAdapter>(respondWith({ success: true, message: 'ok', data: [] }))
     http.defaults.adapter = adapter
 
     await apiClient.get('/projects')

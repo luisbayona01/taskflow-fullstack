@@ -106,9 +106,7 @@ describe('components/tasks/TaskComments', () => {
     await flushPromises()
 
     expect(commentService.create).not.toHaveBeenCalled()
-    expect(wrapper.find('.el-form-item__error').text()).toBe(
-      'El comentario no puede estar vacío.',
-    )
+    expect(wrapper.find('.el-form-item__error').text()).toBe('El comentario no puede estar vacío.')
   })
 
   it('muestra el error devuelto por el backend al publicar', async () => {

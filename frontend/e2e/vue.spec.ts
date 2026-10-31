@@ -1,6 +1,10 @@
 import { test, expect } from '@playwright/test'
 
+import { disableAuthentication, mockApi } from './helpers/mock-api'
+
 test('redirige a la pantalla de inicio de sesión cuando no hay sesión', async ({ page }) => {
+  await mockApi(page, { authenticated: false })
+
   await page.goto('/')
 
   await expect(page).toHaveURL(/\/login(\?.*)?$/)
@@ -9,6 +13,8 @@ test('redirige a la pantalla de inicio de sesión cuando no hay sesión', async 
 })
 
 test('permite navegar al formulario de registro', async ({ page }) => {
+  await mockApi(page, { authenticated: false })
+
   await page.goto('/login')
 
   await page.getByRole('link', { name: 'Regístrate' }).click()
@@ -18,31 +24,7 @@ test('permite navegar al formulario de registro', async ({ page }) => {
 })
 
 test('abre el menú lateral en dispositivos móviles', async ({ page }) => {
-  // Sesión simulada: basta con responder al endpoint /me del backend.
-  await page.route('**/api/me', (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        success: true,
-        message: 'Authenticated.',
-        data: {
-          user: {
-            id: 1,
-            name: 'Ada Lovelace',
-            email: 'ada@taskflow.test',
-            email_verified_at: null,
-            created_at: null,
-            updated_at: null,
-          },
-        },
-      }),
-    }),
-  )
-
-  await page.addInitScript(() => {
-    window.localStorage.setItem('taskflow.token', 'fake-token')
-  })
+  await mockApi(page)
 
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/')
@@ -56,4 +38,34 @@ test('abre el menú lateral en dispositivos móviles', async ({ page }) => {
 
   await expect(sidebar).toHaveClass(/app-shell__aside--open/)
   await expect(sidebar.getByRole('link', { name: 'Proyectos' })).toBeVisible()
+})
+
+test('protege el panel cuando la API responde 401', async ({ page }) => {
+  await mockApi(page)
+
+  await page.route('**/api/projects', (route) =>
+    route.fulfill({
+      status: 401,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: false,
+        message: 'Unauthenticated.',
+        errors: null,
+      }),
+    }),
+  )
+
+  await page.goto('/')
+
+  await expect(page).toHaveURL(/\/login$/)
+})
+
+test('muestra la pantalla de inicio de sesión cuando no hay sesión', async ({ page }) => {
+  await mockApi(page)
+
+  await page.goto('/login')
+  await disableAuthentication(page)
+  await page.goto('/login')
+
+  await expect(page.getByRole('button', { name: 'Entrar' })).toBeVisible()
 })

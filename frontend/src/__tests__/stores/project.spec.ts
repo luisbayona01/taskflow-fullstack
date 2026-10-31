@@ -13,9 +13,13 @@ vi.mock('@/services/project', () => ({
     list: vi.fn<() => Promise<Project[]>>(),
     get: vi.fn<(projectId: number) => Promise<Project>>(),
     create: vi.fn<(payload: { name: string; description?: string | null }) => Promise<Project>>(),
-    update: vi.fn<
-      (projectId: number, payload: { name: string; description?: string | null }) => Promise<Project>
-    >(),
+    update:
+      vi.fn<
+        (
+          projectId: number,
+          payload: { name: string; description?: string | null },
+        ) => Promise<Project>
+      >(),
     remove: vi.fn<(projectId: number) => Promise<void>>(),
     stats: vi.fn<(projectId: number) => Promise<ProjectStats>>(),
   },
@@ -134,7 +138,9 @@ describe('stores/project', () => {
 
   it('carga el detalle del proyecto con sus estadísticas y tareas', async () => {
     vi.mocked(projectService.get).mockResolvedValue(
-      buildProject({ members: [owner, { ...owner, id: 2, name: 'Grace', email: 'grace@test.dev' }] }),
+      buildProject({
+        members: [owner, { ...owner, id: 2, name: 'Grace', email: 'grace@test.dev' }],
+      }),
     )
     vi.mocked(projectService.stats).mockResolvedValue(stats)
     vi.mocked(taskService.list).mockResolvedValue({ tasks: [task], pagination: {} })

@@ -101,13 +101,21 @@ export const MOCK_COMMENT: Comment = {
   author: { id: MOCK_USER.id, name: MOCK_USER.name, email: MOCK_USER.email },
 }
 
-const CORS_HEADERS = {
+const CORS_HEADERS: Record<string, string> = {
   'access-control-allow-origin': '*',
   'access-control-allow-methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
   'access-control-allow-headers': 'Authorization,Content-Type,Accept',
 }
 
-function json(body: unknown, status = 200): Record<string, string | number> {
+/** Opciones de `route.fulfill()` admitidas por el doble de la API. */
+interface FulfillOptions {
+  status?: number
+  contentType?: string
+  headers?: Record<string, string>
+  body?: string
+}
+
+function json(body: unknown, status = 200): FulfillOptions {
   return {
     status,
     contentType: 'application/json',
@@ -116,11 +124,11 @@ function json(body: unknown, status = 200): Record<string, string | number> {
   }
 }
 
-function success(data: unknown, message: string, status = 200): Record<string, string | number> {
+function success(data: unknown, message: string, status = 200): FulfillOptions {
   return json({ success: true, message, data }, status)
 }
 
-function notFound(): Record<string, string | number> {
+function notFound(): FulfillOptions {
   return json(
     {
       success: false,
@@ -191,7 +199,10 @@ function filterTasks(tasks: Task[], query: Record<string, string>): Task[] {
   return result
 }
 
-function paginate(tasks: Task[], query: Record<string, string>): {
+function paginate(
+  tasks: Task[],
+  query: Record<string, string>,
+): {
   tasks: Task[]
   pagination: TaskPagination
 } {
@@ -319,9 +330,7 @@ export async function mockApi(page: Page, options: MockApiOptions = {}): Promise
     if (projectMatch && method === 'GET') {
       const project = projects.find((item) => item.id === Number(projectMatch[1]))
       await route.fulfill(
-        project
-          ? success({ project }, 'Project retrieved successfully.')
-          : notFound(),
+        project ? success({ project }, 'Project retrieved successfully.') : notFound(),
       )
       return
     }
@@ -492,7 +501,11 @@ export async function mockApi(page: Page, options: MockApiOptions = {}): Promise
 
   if (authenticated) {
     await page.addInitScript(() => {
-      window.localStorage.setItem('taskflow.token', 'fake-token')
+      // `disableAuthentication()` permite comprobar la pantalla de login
+      // dentro de una misma página sin que el script reactive la sesión.
+      if (window.sessionStorage.getItem('taskflow.e2e.auth') !== 'off') {
+        window.localStorage.setItem('taskflow.token', 'fake-token')
+      }
     })
   }
 
@@ -502,4 +515,12 @@ export async function mockApi(page: Page, options: MockApiOptions = {}): Promise
       return [...requests].reverse().find((item) => item.method === method && item.path === path)
     },
   }
+}
+
+/** Elimina la sesión simulada para poder visitar la pantalla de login. */
+export async function disableAuthentication(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    window.sessionStorage.setItem('taskflow.e2e.auth', 'off')
+    window.localStorage.removeItem('taskflow.token')
+  })
 }

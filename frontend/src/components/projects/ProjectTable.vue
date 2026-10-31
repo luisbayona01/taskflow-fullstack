@@ -77,11 +77,7 @@ const isOwner = (row: TableRow): boolean => row.role === 'owner'
 
     <el-table-column label="Progreso" width="150">
       <template #default="{ row }: { row: TableRow }">
-        <el-progress
-          v-if="row.progress !== null"
-          :percentage="row.progress"
-          :stroke-width="8"
-        />
+        <el-progress v-if="row.progress !== null" :percentage="row.progress" :stroke-width="8" />
         <span v-else>—</span>
       </template>
     </el-table-column>

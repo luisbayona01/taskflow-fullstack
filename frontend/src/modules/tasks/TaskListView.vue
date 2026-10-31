@@ -51,11 +51,7 @@ async function loadMembers(): Promise<void> {
 }
 
 onMounted(async () => {
-  await Promise.all([
-    loadTasks(),
-    loadMembers(),
-    projectStore.fetchProject(projectId.value),
-  ])
+  await Promise.all([loadTasks(), loadMembers(), projectStore.fetchProject(projectId.value)])
 })
 
 watch(projectId, () => {

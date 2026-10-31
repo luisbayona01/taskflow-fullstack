@@ -78,12 +78,7 @@ async function handleSubmit(): Promise<void> {
     </el-form-item>
 
     <div class="comment-form__actions">
-      <el-button
-        type="primary"
-        native-type="submit"
-        :loading="loading"
-        :disabled="loading"
-      >
+      <el-button type="primary" native-type="submit" :loading="loading" :disabled="loading">
         {{ loading ? 'Publicando…' : 'Publicar' }}
       </el-button>
     </div>

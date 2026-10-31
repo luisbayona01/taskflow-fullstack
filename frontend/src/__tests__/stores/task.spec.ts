@@ -8,10 +8,15 @@ import type { Task, TaskPagination } from '@/types/api'
 
 vi.mock('@/services/task', () => ({
   taskService: {
-    list: vi.fn<(projectId: number, filters?: Record<string, unknown>) => Promise<{
-      tasks: Task[]
-      pagination: TaskPagination
-    }>>(),
+    list: vi.fn<
+      (
+        projectId: number,
+        filters?: Record<string, unknown>,
+      ) => Promise<{
+        tasks: Task[]
+        pagination: TaskPagination
+      }>
+    >(),
     get: vi.fn<(projectId: number, taskId: number) => Promise<Task>>(),
     create: vi.fn<(projectId: number, payload: { title: string }) => Promise<Task>>(),
     update: vi.fn<(projectId: number, taskId: number, payload: object) => Promise<Task>>(),
@@ -110,9 +115,7 @@ describe('stores/task', () => {
     const error = await store.createTask(10, { title: '' }).catch((reason: unknown) => reason)
 
     expect(error).toBeInstanceOf(ApiRequestError)
-    expect((error as ApiRequestError).fieldErrors.title).toEqual([
-      'The title field is required.',
-    ])
+    expect((error as ApiRequestError).fieldErrors.title).toEqual(['The title field is required.'])
     expect(store.saving).toBe(false)
   })
 

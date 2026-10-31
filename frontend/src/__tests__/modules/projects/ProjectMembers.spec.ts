@@ -74,9 +74,9 @@ describe('components/projects/ProjectMembers', () => {
     expect(ownerView.findAll('button').some((b) => b.text().includes('Agregar integrante'))).toBe(
       true,
     )
-    expect(
-      memberView.findAll('button').some((b) => b.text().includes('Agregar integrante')),
-    ).toBe(false)
+    expect(memberView.findAll('button').some((b) => b.text().includes('Agregar integrante'))).toBe(
+      false,
+    )
   })
 
   it('no permite retirar al propietario del proyecto', async () => {

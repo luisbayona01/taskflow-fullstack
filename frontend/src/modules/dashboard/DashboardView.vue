@@ -8,7 +8,6 @@
  */
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import { Collection, FolderOpened, Refresh, Warning } from '@element-plus/icons-vue'
 
 import { dashboardService } from '@/services/dashboard'
@@ -60,13 +59,7 @@ function openProject(projectId: number): void {
       </el-button>
     </header>
 
-    <el-alert
-      v-if="error"
-      type="error"
-      show-icon
-      :closable="false"
-      :title="error"
-    >
+    <el-alert v-if="error" type="error" show-icon :closable="false" :title="error">
       <template #default>
         <el-button size="small" @click="loadOverview">Reintentar</el-button>
       </template>

@@ -1,73 +1,136 @@
-# frontend
+# TaskFlow · Frontend
 
-This template should help get you started developing with Vue 3 in Vite.
+SPA de TaskFlow construida con **Vue 3 + TypeScript + Composition API**, **Vue Router**,
+**Pinia**, **Axios** y **Element Plus**. Consume la API REST del backend Laravel 12 que
+vive en `../backend`.
 
-## Recommended IDE Setup
+## Puesta en marcha
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
-
-## Recommended Browser Setup
-
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
-
-## Type Support for `.vue` Imports in TS
-
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
-
-```sh
+```bash
 npm install
+cp .env.example .env      # si no existe
+npm run dev               # http://localhost:5173
 ```
 
-### Compile and Hot-Reload for Development
+### Variables de entorno
 
-```sh
-npm run dev
+| Variable             | Valor por defecto                  | Descripción                                      |
+| -------------------- | ---------------------------------- | ------------------------------------------------ |
+| `VITE_API_BASE_URL`  | `http://127.0.0.1:8000/api`        | URL base de la API. Também puede ser `/api` para usar el proxy de Vite. |
+
+Con `VITE_API_BASE_URL=/api` el servidor de desarrollo hace de proxy hacia
+`http://127.0.0.1:8000` (ver `vite.config.ts`), lo que evita problemas de CORS.
+
+## Scripts
+
+| Script                  | Descripción                                              |
+| ----------------------- | -------------------------------------------------------- |
+| `npm run dev`           | Servidor de desarrollo con HMR.                           |
+| `npm run build`         | `vue-tsc --build` + `vite build` (comprueba tipos y compila). |
+| `npm run preview`       | Sirve la build de `dist/`.                                |
+| `npm run type-check`    | Comprobación de tipos (incluye `src/` y `e2e/`).          |
+| `npm run lint`          | `oxlint` + `eslint` (con auto-fix).                       |
+| `npm run format`        | `prettier --write` sobre `src/`, `e2e/` y configuración.  |
+| `npm run test:unit`     | Suite de Vitest + Vue Test Utils (ejecución única).        |
+| `npm run test:unit:watch` | Suite de Vitest en modo watch.                          |
+| `npm run test:e2e`      | Suite de Playwright (Chromium, Firefox y WebKit).          |
+
+## Arquitectura
+
+```
+src/
+├── assets/styles/      Estilos globales y variables CSS
+├── components/
+│   ├── layout/         Cabecera y menú lateral
+│   ├── projects/       ProjectListView, ProjectCard, ProjectTable,
+│   │                   ProjectForm, ProjectMembers, MemberList, AddMemberDialog
+│   └── tasks/          TaskForm, TaskFilters, TaskComments,
+│                       CommentForm, CommentItem
+├── layouts/            DefaultLayout (app) y AuthLayout (login/registro)
+├── modules/            Vistas agrupadas por módulo
+│   ├── auth/           LoginView, RegisterView
+│   ├── dashboard/      DashboardView, NotFoundView
+│   ├── projects/       ProjectListView, ProjectDetailView
+│   └── tasks/          TaskListView, TaskDetailView
+├── router/             Rutas perezosas + guards `requiresAuth` / `guestOnly`
+├── services/           Cliente HTTP y un servicio por módulo
+├── stores/             Stores Pinia (auth, project, task, member, comment)
+├── types/              Contrato tipado de la API
+└── utils/              Utilidades (formato, roles, etiquetas, errores)
 ```
 
-### Type-Check, Compile and Minify for Production
+Reglas aplicadas:
 
-```sh
-npm run build
+- Todas las vistas usan `<script setup lang="ts">` y Composition API.
+- Las vistas **no** llaman a Axios: consumen los stores, que a su vez usan los servicios.
+- Los componentes no repiten lógica de errores: `describeApiError()` centraliza los mensajes.
+- No hay `any`, ni `console.*`, ni dependencias de UI distintas de Element Plus.
+
+### Capa HTTP
+
+`src/services/api.ts` es el único punto de contacto con el backend:
+
+- `baseURL` configurable con `VITE_API_BASE_URL`.
+- Cabeceras `Accept`/`Content-Type` JSON y `Authorization: Bearer <token>` (el token nunca
+  se escribe en la consola).
+- Normalización de errores en `ApiRequestError` con `status`, `errors` (422 por campo),
+  `retryAfter` (429) y banderas (`isValidationError`, `isUnauthorized`, `isForbidden`,
+  `isNotFound`, `isRateLimited`, `isServerError`).
+- Un `401` dispara `onUnauthorized()`: se cierra la sesión y se navega al login.
+- Deduplicación de peticiones GET en vuelo y caché de 30 s invalidada por cualquier
+  mutación o al cerrar sesión.
+
+### Contrato con el backend
+
+Los tipos de `src/types/api.ts` reflejan las respuestas reales verificadas contra
+`backend/routes/api.php` y `backend/documentacion/api-docs.json`:
+
+| Endpoint                                          | Método    | Respuesta                                       |
+| ------------------------------------------------- | --------- | ----------------------------------------------- |
+| `/register`, `/login`, `/logout`, `/me`           | POST/GET  | `{ success, message, data }`                    |
+| `/projects`                                       | GET/POST  | `{ success, message, data: { projects } }`      |
+| `/projects/{id}`                                  | GET/PUT/DELETE | `{ success, message, data: { project } }`  |
+| `/projects/{id}/members`                          | GET/POST  | `{ success, message, data: { members } }`       |
+| `/projects/{id}/members/{user}`                   | DELETE    | 204                                             |
+| `/projects/{id}/stats`                            | GET       | `{ data }` (sin envoltorio `success`)           |
+| `/projects/{id}/tasks`                            | GET/POST  | `{ success, message, data: { tasks, pagination } }` |
+| `/projects/{id}/tasks/{task}`                     | GET/PUT/PATCH/DELETE | `{ success, message, data: { task } }` |
+| `/projects/{id}/tasks/{task}/comments`            | GET/POST  | `JsonResource`: `{ data, links, meta }` / `{ data }` |
+
+La paginación de tareas es un objeto propio del backend
+(`total`, `per_page`, `current_page`, `last_page`, `from`, `to`) y está tipada como
+`TaskPagination`.
+
+### Rutas
+
+| Ruta                          | Nombre          | Guard         |
+| ----------------------------- | --------------- | ------------- |
+| `/login`, `/register`         | `login`, `register` | `guestOnly` |
+| `/`                           | `dashboard`     | `requiresAuth` |
+| `/projects`                   | `projects`      | `requiresAuth` |
+| `/projects/:projectId`        | `project-detail`| `requiresAuth` |
+| `/projects/:projectId/tasks`  | `task-list`     | `requiresAuth` |
+| `/projects/:projectId/tasks/:taskId` | `task-detail` | `requiresAuth` |
+| `/:pathMatch(.*)*`            | `not-found`     | —             |
+
+## Pruebas
+
+```bash
+npm run test:unit     # 85 pruebas en 14 archivos (Vitest + Vue Test Utils)
+npm run test:e2e      # 93 pruebas (31 casos × 3 navegadores) con Playwright
 ```
 
-### Run Unit Tests with [Vitest](https://vitest.dev/)
+Las pruebas E2E se ejecutan contra un doble de la API, por lo que **no necesitan backend
+ni base de datos**. Consulta [`e2e/README.md`](e2e/README.md) para ejecutarlas contra el
+backend real y para conocer los requisitos.
 
-```sh
-npm run test:unit
-```
+### Responsive
 
-### Run End-to-End Tests with [Playwright](https://playwright.dev)
+Se validan los viewports 1920×1080, 1366×768, 768×1024, 390×844 y 360×800 comprobando
+que `documentElement.scrollWidth <= documentElement.clientWidth` en el panel, el listado y
+el detalle de proyectos, el listado y el detalle de tareas y la pantalla de login.
 
-```sh
-# Install browsers for the first run
-npx playwright install
-
-# When testing on CI, must build the project first
-npm run build
-
-# Runs the end-to-end tests
-npm run test:e2e
-# Runs the tests only on Chromium
-npm run test:e2e -- --project=chromium
-# Runs the tests of a specific file
-npm run test:e2e -- tests/example.spec.ts
-# Runs the tests in debug mode
-npm run test:e2e -- --debug
-```
-
-### Lint with [ESLint](https://eslint.org/)
-
-```sh
-npm run lint
-```
+- Por debajo de 900 px el menú lateral se convierte en drawer y el listado de proyectos
+  pasa a vista de tarjetas.
+- Las tablas de Element Plus hacen scroll horizontal **dentro de su contenedor**, sin
+  provocar scroll horizontal en el documento.

@@ -148,7 +148,7 @@ describe('services/task', () => {
   })
 
   it('no repite la misma consulta GET mientras la caché está vigente', async () => {
-    const adapter = vi.fn(
+    const adapter = vi.fn<AxiosAdapter>(
       respondWith({
         success: true,
         message: 'Tasks retrieved successfully.',

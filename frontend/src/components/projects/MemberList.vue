@@ -6,8 +6,6 @@
  * nunca sobre la fila del propio propietario (el backend rechaza con 422 que
  * se retire a sí mismo).
  */
-import { computed } from 'vue'
-
 import { PROJECT_ROLE_LABELS, roleForMember } from '@/utils/project-role'
 import type { ProjectMember } from '@/types/api'
 
@@ -34,8 +32,6 @@ function canRemove(member: ProjectMember): boolean {
 
   return member.id !== props.projectOwnerId && member.id !== props.currentUserId
 }
-
-const ownerLabel = computed(() => PROJECT_ROLE_LABELS.owner)
 </script>
 
 <template>
@@ -48,12 +44,8 @@ const ownerLabel = computed(() => PROJECT_ROLE_LABELS.owner)
         <span>{{ member.email }}</span>
       </div>
 
-      <el-tag
-        :type="roleOf(member) === 'owner' ? 'primary' : 'info'"
-        size="small"
-        effect="light"
-      >
-        {{ roleOf(member) === 'owner' ? ownerLabel : PROJECT_ROLE_LABELS.member }}
+      <el-tag :type="roleOf(member) === 'owner' ? 'primary' : 'info'" size="small" effect="light">
+        {{ roleOf(member) === 'owner' ? PROJECT_ROLE_LABELS.owner : PROJECT_ROLE_LABELS.member }}
       </el-tag>
 
       <el-tag v-if="member.id === currentUserId" size="small" type="success" effect="plain">

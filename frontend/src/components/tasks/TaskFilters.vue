@@ -8,10 +8,7 @@
 import { computed } from 'vue'
 import { Refresh, Search } from '@element-plus/icons-vue'
 
-import {
-  TASK_PRIORITY_LABELS,
-  TASK_STATUS_LABELS,
-} from '@/utils/task-labels'
+import { TASK_PRIORITY_LABELS, TASK_STATUS_LABELS } from '@/utils/task-labels'
 import type { ProjectMember, TaskFilters } from '@/types/api'
 
 const props = defineProps<{

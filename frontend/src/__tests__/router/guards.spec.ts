@@ -41,6 +41,9 @@ describe('router/guards', () => {
   it('redirige al panel cuando ya hay sesión y se visita el login', async () => {
     signIn()
 
+    // Se parte de otra ruta: navegar a la ruta actual se resuelve como
+    // "navegación duplicada" y Vue Router no vuelve a ejecutar los guards.
+    await router.push('/projects')
     await router.push('/login')
 
     expect(router.currentRoute.value.name).toBe('dashboard')

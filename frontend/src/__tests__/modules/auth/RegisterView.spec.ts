@@ -11,14 +11,15 @@ import type { AuthPayload, User } from '@/types/api'
 vi.mock('@/services/auth', () => ({
   authService: {
     login: vi.fn<(payload: { email: string; password: string }) => Promise<AuthPayload>>(),
-    register: vi.fn<
-      (payload: {
-        name: string
-        email: string
-        password: string
-        password_confirmation: string
-      }) => Promise<AuthPayload>
-    >(),
+    register:
+      vi.fn<
+        (payload: {
+          name: string
+          email: string
+          password: string
+          password_confirmation: string
+        }) => Promise<AuthPayload>
+      >(),
     logout: vi.fn<() => Promise<void>>(),
     me: vi.fn<() => Promise<User>>(),
   },

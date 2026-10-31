@@ -10,13 +10,7 @@
  */
 
 import { apiClient } from './api'
-import type {
-  Task,
-  TaskFilters,
-  TaskPayload,
-  TaskResponse,
-  TasksResponse,
-} from '@/types/api'
+import type { Task, TaskFilters, TaskPayload, TaskResponse, TasksResponse } from '@/types/api'
 
 export interface TaskService {
   list(projectId: number, filters?: TaskFilters): Promise<TasksResponse['data']>
@@ -45,11 +39,7 @@ export const taskService: TaskService = {
     return data.data.task
   },
 
-  async update(
-    projectId: number,
-    taskId: number,
-    payload: Partial<TaskPayload>,
-  ): Promise<Task> {
+  async update(projectId: number, taskId: number, payload: Partial<TaskPayload>): Promise<Task> {
     const { data } = await apiClient.put<TaskResponse>(
       `/projects/${projectId}/tasks/${taskId}`,
       payload,
@@ -62,10 +52,9 @@ export const taskService: TaskService = {
     taskId: number,
     status: TaskPayload['status'],
   ): Promise<Task> {
-    const { data } = await apiClient.patch<TaskResponse>(
-      `/projects/${projectId}/tasks/${taskId}`,
-      { status },
-    )
+    const { data } = await apiClient.patch<TaskResponse>(`/projects/${projectId}/tasks/${taskId}`, {
+      status,
+    })
     return data.data.task
   },
 
