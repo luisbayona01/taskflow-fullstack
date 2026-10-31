@@ -16,10 +16,12 @@ npm run dev               # http://localhost:5173
 
 | Variable             | Valor por defecto                  | Descripción                                      |
 | -------------------- | ---------------------------------- | ------------------------------------------------ |
-| `VITE_API_BASE_URL`  | `http://127.0.0.1:8000/api`        | URL base de la API. Também puede ser `/api` para usar el proxy de Vite. |
+| `VITE_API_BASE_URL`  | `http://127.0.0.1:8000/api`        | URL base de la API. También puede ser `/api` para usar el proxy de Vite. |
+| `DEV_PROXY_TARGET`   | `http://127.0.0.1:8000`            | Destino del proxy de Vite (sólo servidor de desarrollo). Con el backend en Docker: `http://127.0.0.1:8010`. |
 
 Con `VITE_API_BASE_URL=/api` el servidor de desarrollo hace de proxy hacia
 `http://127.0.0.1:8000` (ver `vite.config.ts`), lo que evita problemas de CORS.
+`DEV_PROXY_TARGET` permite apuntar ese proxy al backend en Docker (puerto `8010`).
 
 ## Ejecución con Docker
 

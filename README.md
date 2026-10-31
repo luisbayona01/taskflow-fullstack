@@ -5,10 +5,43 @@ Proyecto de prueba técnica para la gestión de tareas y proyectos.
 ## 🐳 Ejecución con Docker (recomendado)
 
 El `docker-compose.yml` de la raíz levanta el stack completo (MySQL + API Laravel + SPA Vue + phpMyAdmin)
-con una sola orden:
+con una sola orden, sin instalar PHP, Node ni MySQL en el host.
+
+### Requisitos
+
+- Docker Engine 24 o superior con **Docker Compose v2** (`docker compose version`).
+- ~2 GB de RAM libres para construir las imágenes.
+
+### Arranque rápido
 
 ```bash
+# 1. Construir las imágenes y levantar el stack en segundo plano
 docker compose up -d --build
+
+# 2. Seguir el arranque (migraciones y seed del backend)
+docker compose logs -f backend
+
+# 3. Abrir la SPA
+#    http://localhost:4300
+```
+
+El arranque es **idempotente**: el backend espera a que MySQL esté saludable, aplica las
+migraciones pendientes y sólo carga los datos de demostración si la tabla `users` está vacía.
+
+### Arquitectura de contenedores
+
+```
+   navegador ──► :4300  taskflow-frontend (nginx)
+                          │   ├─ /            → SPA estática (dist/)
+                          │   └─ /api/*       → proxy a taskflow-backend-nginx
+                          │
+                          ▼
+                 taskflow-backend-nginx (:80)  ── fastcgi ──►  taskflow-backend
+                                                                            │
+   phpMyAdmin ──► :4301  taskflow-phpmyadmin ─────────────────────────────┤
+                                                                            ▼
+                                                            taskflow-mysql (:3306)
+                                                                base `taskflow`
 ```
 
 ### Servicios y puertos
@@ -40,15 +73,211 @@ El `DemoSeeder` se ejecuta automáticamente la primera vez (sólo si la tabla `u
 
 Incluye 2 proyectos, 10 tareas y comentarios.
 
+### Volúmenes y persistencia
+
+| Volumen            | Contenedor            | Ruta                      | Contenido |
+| ------------------ | --------------------- | ------------------------- | --------- |
+| `mysql_data`       | `taskflow-mysql`      | `/var/lib/mysql`          | Datos de MySQL (base `taskflow`). |
+| `backend_storage`  | `taskflow-backend`    | `/var/www/html/storage`   | `.env` generado (`storage/app/docker.env`), logs y cachés de Laravel. |
+
+> `docker compose down` conserva ambos volúmenes; `docker compose down -v` los borra y obliga
+> a volver a migrar y sembrar la base en el siguiente arranque.
+
+### Variables de entorno del compose
+
+El backend **no** monta un `.env` del host: el entrypoint genera uno dentro del contenedor a
+partir de estas variables y lo persiste en el volumen.
+
+| Variable                    | Valor                     | Descripción |
+| --------------------------- | ------------------------- | ----------- |
+| `APP_NAME`                  | `TaskFlow`                | Nombre de la aplicación. |
+| `APP_ENV` / `APP_DEBUG`     | `production` / `false`    | Modo de ejecución. |
+| `APP_URL`                   | `http://localhost:8010`   | URL pública de la API. |
+| `DB_HOST` / `DB_PORT`       | `mysql` / `3306`          | Conexión interna al contenedor de MySQL. |
+| `DB_DATABASE`               | `taskflow`                | Base de datos creada por MySQL. |
+| `DB_USERNAME` / `DB_PASSWORD` | `root` / `root`         | Credenciales de MySQL (demostración). |
+| `SESSION_DRIVER`            | `file`                    | Sesiones en el volumen de storage. |
+| `CACHE_STORE` / `QUEUE_CONNECTION` | `database` / `sync` | Caché en BD y colas síncronas. |
+| `VITE_API_BASE_URL` (build) | `/api`                   | La SPA llama a la API en el mismo origen. |
+
+### El archivo `docker-compose.yml`
+
+```yaml
+services:
+  mysql:
+    image: mysql:8
+    container_name: taskflow-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: taskflow
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p$${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build:
+      context: ./backend
+    container_name: taskflow-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      APP_NAME: TaskFlow
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: http://localhost:8010
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: taskflow
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      SESSION_DRIVER: file
+      CACHE_STORE: database
+      QUEUE_CONNECTION: sync
+      L5_SWAGGER_USE_ABSOLUTE_PATH: "false"
+    volumes:
+      - backend_storage:/var/www/html/storage
+
+  backend-nginx:
+    image: nginx:1.27-alpine
+    container_name: taskflow-backend-nginx
+    restart: unless-stopped
+    depends_on:
+      - backend
+    volumes:
+      - ./backend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./backend/public:/var/www/html/public:ro
+    ports:
+      - "8010:80"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # La SPA llama a la API en el mismo origen: Nginx hace de proxy de
+        # `/api` hacia `backend-nginx` (ver frontend/nginx.conf).
+        VITE_API_BASE_URL: /api
+    container_name: taskflow-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend-nginx
+    ports:
+      - "4300:80"
+
+  phpmyadmin:
+    image: phpmyadmin:5
+    container_name: taskflow-phpmyadmin
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: root
+      UPLOAD_LIMIT: 64M
+    ports:
+      - "4301:80"
+
+volumes:
+  mysql_data:
+  backend_storage:
+```
+
+Los ficheros que lo hacen funcionar son:
+
+| Fichero                    | Función |
+| -------------------------- | ------- |
+| `backend/Dockerfile`       | Build multi-stage: assets de Vite + PHP 8.2 FPM con `pdo_mysql`, `mbstring`, `xml`, `zip`, `bcmath` y `opcache`. |
+| `backend/docker-entrypoint.sh` | Espera a MySQL, genera el `.env`, ejecuta `key:generate`, `migrate --force` y el seed condicional. |
+| `backend/nginx.conf`       | Sirve `backend/public/` y enruta las peticiones PHP a PHP-FPM. |
+| `frontend/Dockerfile`      | Build `npm ci` + `npm run build` y publicación en `nginx:1.27-alpine`. |
+| `frontend/nginx.conf`      | Fallback de la SPA (`try_files … /index.html`) y proxy de `/api` hacia `backend-nginx`. |
+
 ### Comandos habituales
 
 ```bash
-docker compose ps                                      # estado de los contenedores
-docker compose logs -f backend                         # logs del backend (migraciones, seed)
+# Estado y logs
+docker compose ps                                    # estado de los contenedores
+docker compose logs -f backend                       # logs del backend (migraciones, seed)
+docker compose logs -f frontend                      # logs del nginx de la SPA
+
+# Reconstruir (sólo un servicio y sus dependencias)
+docker compose up -d --build frontend                # recompilar la SPA
+docker compose up -d --build backend                 # recompilar la API
+docker compose restart backend                       # reiniciar sin reconstruir
+
+# Ejecutar comandos dentro de los contenedores
+docker compose exec backend php artisan migrate --force
+docker compose exec backend php artisan db:seed --class=DemoSeeder --force
 docker compose exec -T mysql mysql -uroot -proot taskflow   # consola MySQL
-docker compose down                                    # parar (conserva los datos)
-docker compose down -v                                 # parar y borrar volúmenes (MySQL y .env del backend)
+
+# Parada
+docker compose down                                  # parar (conserva los datos)
+docker compose down -v                               # parar y borrar volúmenes (MySQL y .env del backend)
 ```
+
+### Verificación del stack
+
+```bash
+# 1. La SPA responde
+curl -I http://localhost:4300/                       # HTTP/1.1 200 OK
+
+# 2. Login (devuelve token Sanctum)
+curl -s -X POST http://localhost:8010/api/login \
+  -H 'Content-Type: application/json' -H 'Accept: application/json' \
+  -d '{"email":"ana@taskflow.test","password":"password"}'
+
+# 3. Endpoint protegido sin token → 401 (no 500)
+curl -s -o /dev/null -w '%{http_code}\n' http://localhost:4300/api/projects
+
+# 4. La API también se consume a través del proxy de la SPA (mismo origen)
+curl -s -o /dev/null -w '%{http_code}\n' http://localhost:4300/api/projects
+```
+
+### Desarrollo con Docker
+
+También se puede usar Docker sólo para la base de datos y trabajar en local:
+
+```bash
+# MySQL en Docker, backend con PHP local (backend/.env)
+DB_HOST=127.0.0.1
+DB_PORT=3307
+DB_DATABASE=taskflow
+DB_USERNAME=root
+DB_PASSWORD=root
+```
+
+```bash
+# Frontend con Vite local consumiendo la API en el mismo origen (evita CORS)
+# frontend/.env
+VITE_API_BASE_URL=/api
+DEV_PROXY_TARGET=http://127.0.0.1:8010
+```
+
+> `DEV_PROXY_TARGET` sólo afecta al servidor de desarrollo de Vite (indica dónde está el
+> backend); la imagen de Docker compila la SPA con `VITE_API_BASE_URL=/api` y usa su propio
+> proxy Nginx. La suite de pruebas del backend se ejecuta en el host (`php artisan test`),
+> porque la imagen se instala con `composer install --no-dev`.
+
+### Resolución de problemas
+
+| Síntoma | Solución |
+| ------- | -------- |
+| `port is already allocated` | Otro proceso usa 3307/8010/4300/4301: cambia el puerto del host en `docker-compose.yml` (p. ej. `"4302:80"`). |
+| La SPA carga pero la API falla | Revisa `docker compose logs backend` (el entrypoint espera a MySQL) y `docker compose ps` (MySQL debe estar `healthy`). |
+| Cambios en el `.env` del contenedor sin efecto | El `.env` se persiste en el volumen: edita `docker-compose.yml` y ejecuta `docker compose up -d --force-recreate backend`, o borra `storage/app/docker.env` dentro del contenedor. |
+| Quiero empezar de cero | `docker compose down -v && docker compose up -d --build` (borra la base y vuelve a migrar y sembrar). |
 
 > El `.env` del backend se genera dentro del contenedor y se persiste en el volumen `backend_storage`
 > (`storage/app/docker.env`), de modo que la `APP_KEY` se conserva entre reinicios.

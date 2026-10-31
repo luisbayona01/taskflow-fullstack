@@ -2,9 +2,12 @@ import { fileURLToPath } from 'node:url'
 import { mergeConfig, defineConfig, configDefaults } from 'vitest/config'
 import viteConfig from './vite.config.ts'
 
-export default mergeConfig(
-  viteConfig,
-  defineConfig({
+export default defineConfig(async (env) => {
+  // `vite.config.ts` se exporta como función (necesita el modo para leer el
+  // entorno), por lo que hay que resolverlo antes de fusionarlo.
+  const base = typeof viteConfig === 'function' ? await viteConfig(env) : viteConfig
+
+  return mergeConfig(base, {
     test: {
       environment: 'jsdom',
       exclude: [...configDefaults.exclude, 'e2e/**'],
@@ -20,5 +23,5 @@ export default mergeConfig(
         },
       },
     },
-  }),
-)
+  })
+})
