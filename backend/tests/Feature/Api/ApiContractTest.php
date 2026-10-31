@@ -79,6 +79,19 @@ class ApiContractTest extends TestCase
             ->assertJsonPath('success', false);
     }
 
+    /**
+     * La API es JSON puro: aunque el cliente no envíe `Accept: application/json`
+     * debe responder 401 y no un 500 por la redirección a una ruta `login`
+     * inexistente.
+     */
+    public function test_protected_endpoint_without_json_header_still_returns_401(): void
+    {
+        $this->get('/api/projects')
+            ->assertStatus(401)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Unauthenticated.');
+    }
+
     public function test_unknown_project_returns_404(): void
     {
         $this->actingAs($this->member, 'sanctum')

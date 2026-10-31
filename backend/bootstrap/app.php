@@ -21,7 +21,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // La API sólo devuelve JSON: sin esa cabecera, Laravel intentaría
+        // redirigir a una ruta `login` que no existe y devolvería un 500 en
+        // lugar del 401 esperado por el cliente.
+        $middleware->api(prepend: [\App\Http\Middleware\ForceJsonResponse::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

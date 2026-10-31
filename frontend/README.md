@@ -21,6 +21,24 @@ npm run dev               # http://localhost:5173
 Con `VITE_API_BASE_URL=/api` el servidor de desarrollo hace de proxy hacia
 `http://127.0.0.1:8000` (ver `vite.config.ts`), lo que evita problemas de CORS.
 
+## Ejecución con Docker
+
+La SPA forma parte del `docker-compose.yml` de la raíz del repositorio:
+
+```bash
+docker compose up -d --build    # compila la SPA y levanta el stack completo
+docker compose logs -f frontend
+docker compose down             # parar conservando los datos
+```
+
+| Contenedor          | Puerto host | Descripción |
+| ------------------- | ----------- | ----------- |
+| `taskflow-frontend` | `4300`      | SPA compilada (`npm ci` + `npm run build`) servida por Nginx. |
+
+La imagen se construye con `VITE_API_BASE_URL=/api`, de modo que la SPA consume la API
+en el **mismo origen** y el Nginx del contenedor hace de proxy de `/api` hacia
+`backend-nginx` (sin CORS). La SPA queda disponible en http://localhost:4300.
+
 ## Scripts
 
 | Script                  | Descripción                                              |
@@ -116,7 +134,7 @@ La paginación de tareas es un objeto propio del backend
 ## Pruebas
 
 ```bash
-npm run test:unit     # 85 pruebas en 14 archivos (Vitest + Vue Test Utils)
+npm run test:unit     # 94 pruebas en 16 archivos (Vitest + Vue Test Utils)
 npm run test:e2e      # 93 pruebas (31 casos × 3 navegadores) con Playwright
 ```
 

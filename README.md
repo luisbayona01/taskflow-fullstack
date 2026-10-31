@@ -2,6 +2,58 @@
 
 Proyecto de prueba técnica para la gestión de tareas y proyectos.
 
+## 🐳 Ejecución con Docker (recomendado)
+
+El `docker-compose.yml` de la raíz levanta el stack completo (MySQL + API Laravel + SPA Vue + phpMyAdmin)
+con una sola orden:
+
+```bash
+docker compose up -d --build
+```
+
+### Servicios y puertos
+
+| Servicio        | Imagen / build                              | Puerto host | Descripción |
+| --------------- | ------------------------------------------- | ----------- | ----------- |
+| `mysql`         | `mysql:8`                                   | `3307`      | Base de datos MySQL 8 (base `taskflow`, `root` / `root`). Definición heredada del contenedor MySQL del stack `linkhubpruebatecnica` y adaptada al esquema de TaskFlow. |
+| `backend`       | `backend/Dockerfile` (`php:8.2-fpm`)         | —           | API Laravel 12. Espera a MySQL, genera su `.env`, aplica las migraciones y carga el `DemoSeeder` si la tabla `users` está vacía. |
+| `backend-nginx` | `nginx:1.27-alpine`                          | `8010`      | Sirve `backend/public/` y enruta las peticiones PHP a PHP-FPM. |
+| `frontend`      | `frontend/Dockerfile` (node → nginx)        | `4300`      | SPA compilada con `VITE_API_BASE_URL=/api`; su Nginx hace de proxy de `/api` hacia `backend-nginx` (mismo origen, sin CORS). |
+| `phpmyadmin`    | `phpmyadmin:5`                              | `4301`      | Administración gráfica de MySQL. |
+
+| URL                              | Servicio |
+| -------------------------------- | -------- |
+| http://localhost:4300            | SPA (frontend) |
+| http://localhost:8010            | API Laravel (catálogo de rutas y Swagger UI en `/documentation`) |
+| http://localhost:4301            | phpMyAdmin (base `taskflow`, `root` / `root`) |
+| `127.0.0.1:3307`                 | MySQL (cliente nativo) |
+
+### Datos de demostración
+
+El `DemoSeeder` se ejecuta automáticamente la primera vez (sólo si la tabla `users` está vacía):
+
+| Usuario       | Correo                | Contraseña |
+| ------------- | --------------------- | ---------- |
+| Ana Torres    | `ana@taskflow.test`   | `password` |
+| Luis Ramírez  | `luis@taskflow.test`  | `password` |
+| Sofía Herrera | `sofia@taskflow.test` | `password` |
+
+Incluye 2 proyectos, 10 tareas y comentarios.
+
+### Comandos habituales
+
+```bash
+docker compose ps                                      # estado de los contenedores
+docker compose logs -f backend                         # logs del backend (migraciones, seed)
+docker compose exec -T mysql mysql -uroot -proot taskflow   # consola MySQL
+docker compose down                                    # parar (conserva los datos)
+docker compose down -v                                 # parar y borrar volúmenes (MySQL y .env del backend)
+```
+
+> El `.env` del backend se genera dentro del contenedor y se persiste en el volumen `backend_storage`
+> (`storage/app/docker.env`), de modo que la `APP_KEY` se conserva entre reinicios.
+> Las credenciales incluidas son de demostración: no usarlas en producción.
+
 ## 🚀 Instalación y Configuración
 
 ### Backend (Laravel API)
@@ -30,8 +82,8 @@ Proyecto de prueba técnica para la gestión de tareas y proyectos.
 - `VITE_API_BASE_URL`: URL base del servidor Laravel (ej. `http://localhost:8000/api`).
 
 ## 🧪 Ejecución de Pruebas
-- **Backend**: Ejecutar `php artisan test` para correr las pruebas unitarias y de integración (124 pruebas). La [matriz de pruebas de la API](#-matriz-de-pruebas-de-la-api-parte-2) detalla qué se verifica en cada endpoint.
-- **Frontend**: Ejecutar `npm run test:unit` para las pruebas de componentes y lógica.
+- **Backend**: Ejecutar `php artisan test` para correr las pruebas unitarias y de integración (125 pruebas). La [matriz de pruebas de la API](#-matriz-de-pruebas-de-la-api-parte-2) detalla qué se verifica en cada endpoint.
+- **Frontend**: Ejecutar `npm run test:unit` para las pruebas de componentes y lógica (94 pruebas en 16 archivos) y `npm run test:e2e` para los flujos end-to-end con Playwright (31 casos × Chromium/Firefox/WebKit = 93 ejecuciones).
 
 ## 🛠 Decisiones Técnicas
 
@@ -245,6 +297,7 @@ Esta es la lista de endpoints que la prueba técnica pide verificar y los casos 
 | Caso | Resultado esperado |
 |---|---|
 | Los 20 endpoints protegidos sin token | `401` con `{"success": false}` |
+| Endpoint protegido sin cabecera `Accept: application/json` | `401` (no `500` por la redirección a una ruta `login` inexistente) |
 | Proyecto o tarea inexistente | `404` con el mismo envoltorio |
 | Tarea perteneciente a otro proyecto | `404` |
 | Errores de validación (create y update) | `422` con los nombres de los campos |
@@ -256,7 +309,7 @@ Esta es la lista de endpoints que la prueba técnica pide verificar y los casos 
 ### Comandos
 ```bash
 cd backend
-php artisan test                                    # suite completa (124 pruebas)
+php artisan test                                    # suite completa (125 pruebas)
 php artisan test --filter=ApiContractTest           # contrato HTTP
 php artisan test --filter=TaskNotificationTest      # notificaciones
 php artisan test --filter=TaskFilteringApiTest      # filtros y paginación

@@ -20,6 +20,26 @@ php artisan serve
 
 La API queda disponible en `http://localhost:8000/api`.
 
+## Ejecución con Docker
+
+El backend forma parte del `docker-compose.yml` de la raíz del repositorio:
+
+```bash
+docker compose up -d --build      # levanta MySQL + backend + nginx + frontend
+docker compose logs -f backend    # logs (migraciones, seed)
+docker compose down               # parar conservando los datos
+```
+
+| Contenedor      | Puerto host | Descripción |
+| --------------- | ----------- | ----------- |
+| `taskflow-backend`       | —    | PHP-FPM 8.2 con la aplicación. Espera a MySQL, genera su `.env`, aplica `migrate --force` y ejecuta `DemoSeeder` si la tabla `users` está vacía. |
+| `taskflow-backend-nginx` | `8010` | Nginx que sirve `public/` y enruta PHP a PHP-FPM. |
+
+La API queda disponible en `http://localhost:8010/api` y Swagger UI en
+`http://localhost:8010/documentation`. El `.env` del contenedor se genera solo y se
+persiste en el volumen `backend_storage` (`storage/app/docker.env`), de forma que la
+`APP_KEY` se conserva entre reinicios.
+
 ## Variables de entorno relevantes
 
 | Variable | Valor por defecto | Descripción |
@@ -36,7 +56,7 @@ La API queda disponible en `http://localhost:8000/api`.
 php artisan test
 ```
 
-La suite (124 pruebas) incluye la validación automática de la documentación OpenAPI
+La suite (125 pruebas) incluye la validación automática de la documentación OpenAPI
 (`tests/Feature/OpenApiDocumentationTest.php`): comprueba que el JSON es válido,
 que todas las rutas de la API están documentadas, que los endpoints protegidos
 usan el esquema Bearer y que no existen referencias rotas.
