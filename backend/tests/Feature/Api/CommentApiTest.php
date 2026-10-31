@@ -48,8 +48,8 @@ class CommentApiTest extends TestCase
         ]);
 
         $response->assertStatus(201)
-                 ->assertJsonPath('body', 'This is a test comment')
-                 ->assertJsonPath('author.id', $this->member->id);
+                 ->assertJsonPath('data.body', 'This is a test comment')
+                 ->assertJsonPath('data.author.id', $this->member->id);
 
         $this->assertDatabaseHas('comments', [
             'task_id' => $this->task->id,

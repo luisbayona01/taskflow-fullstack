@@ -16,6 +16,14 @@ class ProjectPolicy
     }
 
     /**
+     * Determine whether the user can create tasks inside the project.
+     */
+    public function create(User $user, Project $project): bool
+    {
+        return $project->members()->whereKey($user->id)->exists();
+    }
+
+    /**
      * Determine whether the user can update the project.
      */
     public function update(User $user, Project $project): bool

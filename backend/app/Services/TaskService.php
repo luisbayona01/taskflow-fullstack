@@ -30,11 +30,14 @@ class TaskService
 
             $task->save();
 
-            // Rule: Notify if assigned_to is present
-            if ($task->assigned_to) {
+            // The notification implements ShouldQueueAfterCommit, therefore the
+            // queued job is only dispatched once the transaction is committed.
+            if ($task->assigned_to !== null) {
                 $assignee = User::find($task->assigned_to);
-                // afterCommit ensures notification is sent only if transaction succeeds
-                Notification::send($assignee, new TaskAssignedNotification($task, $user))->afterCommit();
+
+                if ($assignee !== null) {
+                    Notification::send($assignee, new TaskAssignedNotification($task, $user));
+                }
             }
 
             return $task;
@@ -44,11 +47,11 @@ class TaskService
     /**
      * Update an existing task.
      */
-    public function updateTask(Task $task, array $data): Task
+    public function updateTask(Task $task, array $data, ?User $assigner = null): Task
     {
-        return DB::transaction(function () use ($task, $data): Task {
+        return DB::transaction(function () use ($task, $data, $assigner): Task {
             $oldAssigneeId = $task->assigned_to;
-            $currentUser = Auth::user();
+            $assigner ??= Auth::user();
 
             $task->fill($data);
 
@@ -60,10 +63,13 @@ class TaskService
 
             $task->save();
 
-            // Rule: Notify only if assigned_to changed and is not null
-            if ($task->assigned_to !== $oldAssigneeId && $task->assigned_to !== null) {
+            // Only notify the new assignee when the assignment really changes.
+            if ($task->assigned_to !== null && $task->assigned_to !== $oldAssigneeId) {
                 $newAssignee = User::find($task->assigned_to);
-                Notification::send($newAssignee, new TaskAssignedNotification($task, $currentUser))->afterCommit();
+
+                if ($newAssignee !== null && $assigner !== null) {
+                    Notification::send($newAssignee, new TaskAssignedNotification($task, $assigner));
+                }
             }
 
             return $task->refresh();

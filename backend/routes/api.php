@@ -1,8 +1,10 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectMemberController;
+use App\Http\Controllers\Api\ProjectStatsController;
 use App\Http\Controllers\Api\TaskController;
 use Illuminate\Support\Facades\Route;
 
@@ -25,7 +27,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/projects/{project}/members', [ProjectMemberController::class, 'store']);
     Route::delete('/projects/{project}/members/{user}', [ProjectMemberController::class, 'destroy']);
 
-    Route::get('/projects/{project}/stats', [\\App\\Http\\Controllers\\Api\\ProjectStatsController::class, '__invoke']);
+    Route::get('/projects/{project}/stats', [ProjectStatsController::class, '__invoke']);
 
     Route::get('/projects/{project}/tasks', [TaskController::class, 'index']);
     Route::post('/projects/{project}/tasks', [TaskController::class, 'store']);
@@ -34,6 +36,6 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::patch('/projects/{project}/tasks/{task}', [TaskController::class, 'update']);
     Route::delete('/projects/{project}/tasks/{task}', [TaskController::class, 'destroy']);
 
-    Route::get('/projects/{project}/tasks/{task}/comments', [\\App\\Http\\Controllers\\Api\\CommentController::class, 'index']);
-    Route::post('/projects/{project}/tasks/{task}/comments', [\\App\\Http\\Controllers\\Api\\CommentController::class, 'store']);
+    Route::get('/projects/{project}/tasks/{task}/comments', [CommentController::class, 'index']);
+    Route::post('/projects/{project}/tasks/{task}/comments', [CommentController::class, 'store']);
 });

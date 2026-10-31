@@ -57,26 +57,26 @@ class ProjectStatsApiTest extends TestCase
         // 1 Done, 1 Pending, 1 In Progress, 1 Overdue
         Task::factory()->create([
             'project_id' => $this->project->id,
-            'status' => TaskStatus::DONE,
-            'due_date' => Carbon::now()->subDays(5), // Completed, so not overdue
+            'status' => TaskStatus::Done->value,
+            'due_date' => Carbon::now()->subDays(5)->toDateString(), // Completed, so not overdue
         ]);
 
         Task::factory()->create([
             'project_id' => $this->project->id,
-            'status' => TaskStatus::PENDING,
-            'due_date' => Carbon::now()->addDays(5),
+            'status' => TaskStatus::Pending->value,
+            'due_date' => Carbon::now()->addDays(5)->toDateString(),
         ]);
 
         Task::factory()->create([
             'project_id' => $this->project->id,
-            'status' => TaskStatus::IN_PROGRESS,
-            'due_date' => Carbon::now()->addDays(1),
+            'status' => TaskStatus::InProgress->value,
+            'due_date' => Carbon::now()->addDays(1)->toDateString(),
         ]);
 
         Task::factory()->create([
             'project_id' => $this->project->id,
-            'status' => TaskStatus::PENDING,
-            'due_date' => Carbon::now()->subDays(1), // Overdue
+            'status' => TaskStatus::Pending->value,
+            'due_date' => Carbon::now()->subDays(1)->toDateString(), // Overdue
         ]);
 
         $this->actingAs($this->member);
@@ -99,10 +99,14 @@ class ProjectStatsApiTest extends TestCase
     public function test_percentage_is_rounded_to_two_decimals()
     {
         // 1 done out of 3 tasks = 33.33%
-        Task::factory()->count(3)->create([
+        Task::factory()->create([
             'project_id' => $this->project->id,
+            'status' => TaskStatus::Done->value,
         ]);
-        $this->project->tasks()->first()->update(['status' => TaskStatus::DONE]);
+        Task::factory()->count(2)->create([
+            'project_id' => $this->project->id,
+            'status' => TaskStatus::Pending->value,
+        ]);
 
         $this->actingAs($this->member);
 
@@ -110,6 +114,23 @@ class ProjectStatsApiTest extends TestCase
 
         $response->assertStatus(200)
                  ->assertJsonPath('data.progress_percentage', 33.33);
+    }
+
+    public function test_completed_tasks_are_not_counted_as_overdue()
+    {
+        Task::factory()->create([
+            'project_id' => $this->project->id,
+            'status' => TaskStatus::Done->value,
+            'due_date' => Carbon::now()->subDays(10)->toDateString(),
+        ]);
+
+        $this->actingAs($this->member);
+
+        $response = $this->getJson("/api/projects/{$this->project->id}/stats");
+
+        $response->assertStatus(200)
+                 ->assertJsonPath('data.overdue', 0)
+                 ->assertJsonPath('data.done', 1);
     }
 
     public function test_non_member_cannot_access_stats()

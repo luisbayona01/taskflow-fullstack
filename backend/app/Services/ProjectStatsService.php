@@ -2,63 +2,56 @@
 
 namespace App\Services;
 
-use App\Models\Project;
 use App\Enums\TaskStatus;
+use App\Models\Project;
 use Illuminate\Support\Carbon;
 
 class ProjectStatsService
 {
     /**
-     * Calculate statistics for a specific project.
+     * Calculate the statistics of a project without loading the tasks in memory.
      *
-     * @param Project $project
-     * @return array<string, mixed>
+     * A single aggregation query is used so the number of round trips to the
+     * database stays constant regardless of the amount of tasks.
+     *
+     * @return array<string, int|float>
      */
     public function getStats(Project $project): array
     {
-        $totalTasks = $project->tasks()->count();
+        $now = Carbon::now();
 
-        if ($totalTasks === 0) {
-            return [
-                'total_tasks' => 0,
-                'pending' => 0,
-                'in_progress' => 0,
-                'done' => 0,
-                'overdue' => 0,
-                'progress_percentage' => 0.00,
-            ];
-        }
+        $row = $project->tasks()
+            ->selectRaw('COUNT(*) as total_tasks')
+            ->selectRaw(
+                'SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as pending',
+                [TaskStatus::Pending->value]
+            )
+            ->selectRaw(
+                'SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as in_progress',
+                [TaskStatus::InProgress->value]
+            )
+            ->selectRaw(
+                'SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as done',
+                [TaskStatus::Done->value]
+            )
+            ->selectRaw(
+                'SUM(CASE WHEN due_date IS NOT NULL AND due_date < ? AND status <> ? THEN 1 ELSE 0 END) as overdue',
+                [$now->toDateString(), TaskStatus::Done->value]
+            )
+            ->first();
 
-        // Efficiency: Perform counts in a single query if possible or targeted queries
-        // We can use a conditional aggregation or multiple targeted counts.
-        // Given the simplicity, targeted counts are clean and efficient enough.
-        
-        $doneCount = $project->tasks()
-            ->where('status', TaskStatus::DONE)
-            ->count();
-
-        $pendingCount = $project->tasks()
-            ->where('status', TaskStatus::PENDING)
-            ->count();
-
-        $inProgressCount = $project->tasks()
-            ->where('status', TaskStatus::IN_PROGRESS)
-            ->count();
-
-        $overdueCount = $project->tasks()
-            ->where('due_date', '<', Carbon::now())
-            ->where('status', '!=', TaskStatus::DONE)
-            ->count();
-
-        $progressPercentage = round(($doneCount / $totalTasks) * 100, 2);
+        $totalTasks = (int) ($row?->total_tasks ?? 0);
+        $done = (int) ($row?->done ?? 0);
 
         return [
             'total_tasks' => $totalTasks,
-            'pending' => $pendingCount,
-            'in_progress' => $inProgressCount,
-            'done' => $doneCount,
-            'overdue' => $overdueCount,
-            'progress_percentage' => $progressPercentage,
+            'pending' => (int) ($row?->pending ?? 0),
+            'in_progress' => (int) ($row?->in_progress ?? 0),
+            'done' => $done,
+            'overdue' => (int) ($row?->overdue ?? 0),
+            'progress_percentage' => $totalTasks > 0
+                ? round(($done / $totalTasks) * 100, 2)
+                : 0.00,
         ];
     }
 }
