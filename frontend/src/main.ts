@@ -7,7 +7,7 @@ import '@/assets/styles/main.css'
 
 import App from './App.vue'
 import router from './router'
-import { onUnauthorized } from './services/http'
+import { onUnauthorized } from './services/api'
 import { useAuthStore } from './stores/auth'
 
 const app = createApp(App)

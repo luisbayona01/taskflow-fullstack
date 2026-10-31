@@ -9,7 +9,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 
-import { ApiRequestError } from '@/services/http'
+import { describeApiError } from '@/utils/api-error'
 import { useAuthStore } from '@/stores/auth'
 
 interface RegisterForm {
@@ -76,13 +76,9 @@ async function handleSubmit(): Promise<void> {
     ElMessage.success('Cuenta creada correctamente.')
     await router.push({ name: 'dashboard' })
   } catch (error) {
-    if (error instanceof ApiRequestError) {
-      fieldErrors.value = error.fieldErrors
-      ElMessage.error(error.message)
-      return
-    }
-
-    ElMessage.error('No se pudo crear la cuenta. Inténtalo de nuevo.')
+    const description = describeApiError(error)
+    fieldErrors.value = description.fieldErrors
+    ElMessage.error(description.message)
   }
 }
 </script>

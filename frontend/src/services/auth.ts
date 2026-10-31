@@ -1,8 +1,14 @@
 /**
- * Servicios de autenticación contra la API de TaskFlow.
+ * Servicio de autenticación contra la API de TaskFlow.
+ *
+ * Rutas verificadas en `backend/routes/api.php`:
+ * - POST   /api/register
+ * - POST   /api/login
+ * - POST   /api/logout
+ * - GET    /api/me
  */
 
-import { http } from './http'
+import { apiClient } from './api'
 import type {
   AuthPayload,
   AuthResponse,
@@ -21,21 +27,21 @@ export interface AuthService {
 
 export const authService: AuthService = {
   async login(payload: LoginPayload): Promise<AuthPayload> {
-    const { data } = await http.post<AuthResponse>('/login', payload)
+    const { data } = await apiClient.post<AuthResponse>('/login', payload)
     return data.data
   },
 
   async register(payload: RegisterPayload): Promise<AuthPayload> {
-    const { data } = await http.post<AuthResponse>('/register', payload)
+    const { data } = await apiClient.post<AuthResponse>('/register', payload)
     return data.data
   },
 
   async logout(): Promise<void> {
-    await http.post('/logout')
+    await apiClient.post('/logout')
   },
 
   async me(): Promise<User> {
-    const { data } = await http.get<UserResponse>('/me')
+    const { data } = await apiClient.get<UserResponse>('/me')
     return data.data.user
   },
 }

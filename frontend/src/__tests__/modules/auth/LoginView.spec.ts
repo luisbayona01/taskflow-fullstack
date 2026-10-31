@@ -5,7 +5,7 @@ import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import { ElButton, ElForm, ElFormItem, ElInput } from 'element-plus'
 
 import LoginView from '@/modules/auth/LoginView.vue'
-import { ApiRequestError } from '@/services/http'
+import { ApiRequestError } from '@/services/api'
 import { authService } from '@/services/auth'
 import type { AuthPayload, LoginPayload, RegisterPayload, User } from '@/types/api'
 

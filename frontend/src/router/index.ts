@@ -48,7 +48,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'projects',
         name: 'projects',
-        component: () => import('@/modules/projects/ProjectsView.vue'),
+        component: () => import('@/modules/projects/ProjectListView.vue'),
         meta: { requiresAuth: true, title: 'Proyectos' },
       },
       {
@@ -56,6 +56,12 @@ const routes: RouteRecordRaw[] = [
         name: 'project-detail',
         component: () => import('@/modules/projects/ProjectDetailView.vue'),
         meta: { requiresAuth: true, title: 'Detalle del proyecto' },
+      },
+      {
+        path: 'projects/:projectId/tasks',
+        name: 'task-list',
+        component: () => import('@/modules/tasks/TaskListView.vue'),
+        meta: { requiresAuth: true, title: 'Tareas del proyecto' },
       },
       {
         path: 'projects/:projectId/tasks/:taskId',

@@ -1,25 +1,67 @@
 /**
  * Tipos del contrato de la API REST de TaskFlow (backend Laravel 12).
  *
- * Reflejan exactamente los API Resources y el envoltorio `ApiResponse`
- * que expone el backend, de modo que la SPA no tenga que adivinar formas.
+ * Reflejan las respuestas reales verificadas contra el backend
+ * (`backend/routes/api.php`, `backend/documentacion/api-docs.json` y los
+ * tests de contrato). No se asumen formas que no hayan sido comprobadas.
  */
+
+/* -------------------------------------------------------------------------- */
+/*  Envoltorios de respuesta                                                   */
+/* -------------------------------------------------------------------------- */
 
 /** Envoltorio estándar de las respuestas exitosas del backend. */
 export interface ApiResponse<T> {
-  success: boolean
+  success: true
   message: string
   data: T
 }
 
-/** Envoltorio estándar de las respuestas de error del backend. */
-export interface ApiErrorResponse {
+/** Envoltorio estándar de las respuestas de error del backend (401/403/404/422/429/500). */
+export interface ApiError {
   success: false
   message: string
   errors: Record<string, string[]> | null
 }
 
-/** Envoltorio de las colecciones de recursos paginadas (API Resource collection). */
+/* -------------------------------------------------------------------------- */
+/*  Paginación                                                                 */
+/* -------------------------------------------------------------------------- */
+
+/** Enlace de paginación generado por Laravel. */
+export interface PaginationLink {
+  url: string | null
+  label: string
+  page: number | null
+  active: boolean
+}
+
+/** Metadatos de paginación de una colección de recursos de Laravel. */
+export interface PaginationMeta {
+  current_page: number
+  from: number | null
+  last_page: number
+  links: PaginationLink[]
+  path: string
+  per_page: number
+  to: number | null
+  total: number
+}
+
+/**
+ * Paginación del endpoint de tareas. El backend devuelve un objeto propio
+ * (no el paginador estándar de Laravel), por eso se tipa aparte.
+ */
+export interface TaskPagination {
+  total: number
+  per_page: number
+  current_page: number
+  last_page: number
+  from: number | null
+  to: number | null
+}
+
+/** Colección paginada de recursos (`JsonResource::collection()->response()`). */
 export interface PaginatedCollection<T> {
   data: T[]
   links: {
@@ -28,15 +70,12 @@ export interface PaginatedCollection<T> {
     prev: string | null
     next: string | null
   }
-  meta: {
-    current_page: number
-    from: number | null
-    last_page: number
-    per_page: number
-    to: number | null
-    total: number
-  }
+  meta: PaginationMeta
 }
+
+/* -------------------------------------------------------------------------- */
+/*  Recursos                                                                   */
+/* -------------------------------------------------------------------------- */
 
 export interface User {
   id: number
@@ -47,13 +86,20 @@ export interface User {
   updated_at: string | null
 }
 
+/**
+ * Miembro de un proyecto. El backend serializa la colección de miembros con
+ * `UserResource`, por lo que la forma es idéntica a `User` (el pivote `role`
+ * existe en el modelo, pero no se expone en la respuesta actual).
+ */
+export type ProjectMember = User
+
 export interface Project {
   id: number
   name: string
   description: string | null
   owner_id: number
   owner?: User | null
-  members?: User[] | null
+  members?: ProjectMember[] | null
   created_at: string | null
   updated_at: string | null
 }
@@ -71,6 +117,7 @@ export interface Task {
   due_date: string | null
   project_id: number
   assigned_to: number | null
+  /** Solo aparece cuando el backend carga la relación `assignedUser`. */
   assigned_user?: User | null
   created_at: string | null
   updated_at: string | null
@@ -98,17 +145,8 @@ export interface ProjectStats {
   progress_percentage: number
 }
 
-export interface TaskPagination {
-  total: number
-  per_page: number
-  current_page: number
-  last_page: number
-  from: number | null
-  to: number | null
-}
-
 /* -------------------------------------------------------------------------- */
-/*  Requests                                                                   */
+/*  Payloads                                                                  */
 /* -------------------------------------------------------------------------- */
 
 export interface RegisterPayload {
@@ -157,14 +195,14 @@ export interface TaskFilters {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Responses                                                                  */
+/*  Respuestas compuestas                                                     */
 /* -------------------------------------------------------------------------- */
 
 export type AuthResponse = ApiResponse<AuthPayload>
 export type UserResponse = ApiResponse<{ user: User }>
 export type ProjectsResponse = ApiResponse<{ projects: Project[] }>
 export type ProjectResponse = ApiResponse<{ project: Project }>
-export type MembersResponse = ApiResponse<{ members: User[] }>
+export type MembersResponse = ApiResponse<{ members: ProjectMember[] }>
 export type MessageResponse = ApiResponse<null>
 export type TaskResponse = ApiResponse<{ task: Task }>
 export type TasksResponse = ApiResponse<{ tasks: Task[]; pagination: TaskPagination }>

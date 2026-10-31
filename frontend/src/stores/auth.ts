@@ -9,6 +9,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import { authService } from '@/services/auth'
+import { invalidateApiCache } from '@/services/api'
 import { clearStoredToken, getStoredToken, storeToken } from '@/utils/storage'
 import type { LoginPayload, RegisterPayload, User } from '@/types/api'
 
@@ -30,6 +31,8 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = null
     user.value = null
     clearStoredToken()
+    // Las respuestas cacheadas pertenecen a la sesión anterior.
+    invalidateApiCache()
   }
 
   async function login(payload: LoginPayload): Promise<void> {
